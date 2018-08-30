@@ -1453,16 +1453,13 @@ contract FoMo3Dlong is modularLong {
         uint256 _long = _eth / 100;
         otherF3D_.potSwap.value(_long)();
 
-        // distribute share to affiliate
-        uint256 _aff = _eth / 10;
-
         // decide what to do with affiliate share of fees
         // affiliate must not be self, and must have a name registered
         if (_affID != _pID && plyr_[_affID].name != '') {
-            plyr_[_affID].aff = _aff.add(plyr_[_affID].aff);
-            emit F3Devents.onAffiliatePayout(_affID, plyr_[_affID].addr, plyr_[_affID].name, _rID, _pID, _aff, now);
+            f3DReferral(_rID, _pID, _eth, _affID);
         } else {
-            _p3d = _aff;
+            //if there is no affiliate, _p3d = 10% tokens
+            _p3d = _eth/ 10;
         }
 
         // pay out p3d
@@ -1477,6 +1474,45 @@ contract FoMo3Dlong is modularLong {
         }
 
         return(_eventData_);
+    }
+
+    function f3DReferral(uint256 _rID, uint256 _pID, uint256 _eth, uint256 _affID) 
+        private 
+    {
+        
+        // distribute share to affiliate
+        uint256 _aff = _eth / 20;  //5 percent
+        uint256 _affParent = _eth / 33;  //3 percent
+        uint256 _affGrandParent = _eth / 50; //2 percent
+        
+        uint256 _affParentID = plyr_[_affID].laff;
+            
+        //  affiliate has a parent && must have a name registered
+        if(_affParentID != 0 && plyr_[_affParentID].name != '') {
+                
+            uint256 _affGrandParentID = plyr_[_affParentID].laff;
+                
+            //affiliate has a grand-parent && must have a name registered
+            if(_affGrandParentID != 0 && plyr_[_affGrandParentID].name != '') {
+                plyr_[_affGrandParentID].aff = _affGrandParent.add(plyr_[_affGrandParentID].aff);
+                emit F3Devents.onAffiliatePayout(_affGrandParentID, plyr_[_affGrandParentID].addr, plyr_[_affGrandParentID].name, _rID, _pID, plyr_[_affGrandParentID].aff, now);
+            }else {
+                // if affiliate has no grand parent, add grandparent aff to parent aff 
+                plyr_[_affParentID].aff = _affGrandParent.add(plyr_[_affParentID].aff); 
+            }
+                
+            plyr_[_affParentID].aff = _affParent.add(plyr_[_affParentID].aff);
+            emit F3Devents.onAffiliatePayout(_affParentID, plyr_[_affParentID].addr, plyr_[_affParentID].name, _rID, _pID, plyr_[_affParentID].aff, now);
+        }else {
+            // if affiliate has no  parent & no grand parent, add parent aff and grandparent aff to aff 
+            plyr_[_affID].aff = _affGrandParent.add(plyr_[_affID].aff);
+            plyr_[_affID].aff = _affParent.add(plyr_[_affID].aff);
+        }
+            
+        plyr_[_affID].aff = _aff.add(plyr_[_affID].aff);
+
+        emit F3Devents.onAffiliatePayout(_affID, plyr_[_affID].addr, plyr_[_affID].name, _rID, _pID, plyr_[_affID].aff, now);
+    
     }
 
     function potSwap()
